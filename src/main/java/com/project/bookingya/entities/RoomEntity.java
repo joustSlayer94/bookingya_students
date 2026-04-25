@@ -36,4 +36,8 @@ public class RoomEntity {
 
     @Column(nullable = false)
     private Boolean available;
+
+    public void setPricePerNight(double v) {
+
+    }
 }
