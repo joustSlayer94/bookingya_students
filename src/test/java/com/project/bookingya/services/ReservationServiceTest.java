@@ -331,13 +331,17 @@ class ReservationServiceTest {
                 roomId, checkIn, checkOut, reservationId)).thenReturn(false);
         when(reservationRepository.existsOverlappingReservationForGuest(
                 guestId, checkIn, checkOut, reservationId)).thenReturn(false);
+
+        // Mapeo in-place (void) → doNothing con argmatchers
+        doNothing().when(mapper).map(any(ReservationDto.class), any(ReservationEntity.class));
+
         when(reservationRepository.saveAndFlush(reservationEntity)).thenReturn(reservationEntity);
         when(mapper.map(reservationEntity, Reservation.class)).thenReturn(reservation);
 
         Reservation result = reservationService.update(reservationDto, reservationId);
 
         assertEquals(reservation, result);
-        verify(mapper).map(reservationDto, reservationEntity); // mapeo in-place
+        verify(mapper).map(any(ReservationDto.class), any(ReservationEntity.class));
         verify(reservationRepository).saveAndFlush(reservationEntity);
     }
 
