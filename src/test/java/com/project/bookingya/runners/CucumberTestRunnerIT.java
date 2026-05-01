@@ -7,7 +7,7 @@ import org.junit.runner.RunWith;
 @RunWith(CucumberWithSerenity.class)
 @CucumberOptions(
         features = "src/test/resources/features",
-        glue = "com.project.bookingya",
+        glue = {"com.project.bookingya.steps", "com.project.bookingya.config"},
         plugin = {"pretty"},
         tags = "@smoke",
         objectFactory = io.cucumber.spring.SpringFactory.class

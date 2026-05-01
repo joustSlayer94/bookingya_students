@@ -114,7 +114,7 @@ public class ReservationSteps {
 
     // ─── WHENS ───────────────────────────────────────────────────────────────
 
-    @When("se crea una reserva del {string} al {string} para {int} huéspedes")
+    @When("se crea una reserva del {string} al {string} para {int} huésped(es)")
     public void crearReserva(String checkIn, String checkOut, int guests) {
         reservationDto = new ReservationDto();
         reservationDto.setRoomId(roomId);
