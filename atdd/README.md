@@ -39,6 +39,10 @@ npx playwright install
 ```bash
 # En el proyecto bookingya_students:
 mvn spring-boot:run
+
+#Si presenta error se ejecuta local
+
+mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
 ### 3. Ejecutar los tests
