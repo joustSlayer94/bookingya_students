@@ -5,6 +5,14 @@ on:
     branches:
       - '**'
 
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build-and-test:
     name: Build + Tests + Serenity Report
@@ -24,7 +32,7 @@ jobs:
       - name: Ejecutar build y tests
         run: mvn clean verify
 
-      - name: Publicar reporte de Serenity
+      - name: Publicar reporte de Serenity como artefacto
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -45,8 +53,4 @@ jobs:
         run: |
           echo "## 🧪 Resultado de Tests" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -f target/site/serenity/serenity-summary.txt ]; then
-            cat target/site/serenity/serenity-summary.txt >> $GITHUB_STEP_SUMMARY
-          else
-            echo "Ver artefacto **serenity-report-${{ github.run_number }}** para el reporte completo." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "Ver artefacto **serenity-report-${{ github.run_number }}** para el reporte completo." >> $GITHUB_STEP_SUMMARY
