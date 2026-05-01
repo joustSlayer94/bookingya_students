@@ -41,3 +41,9 @@ out/
 
 # Serenity reports
 **/site/serenity/
+
+# Playwright / ATDD
+atdd/node_modules/
+atdd/playwright-report/
+atdd/test-results/
+atdd/.playwright/

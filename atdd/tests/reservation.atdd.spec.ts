@@ -1,0 +1,189 @@
+import { test, expect } from '@playwright/test';
+import { BookingyaApiHelper } from '../helpers/BookingyaApiHelper';
+
+/**
+ * ATDD - Gestión de Reservas
+ *
+ * Criterios de aceptación del cliente:
+ * - Como usuario, quiero crear reservas válidas exitosamente
+ * - Como usuario, NO quiero poder crear reservas con fechas inválidas
+ * - Como usuario, NO quiero poder reservar habitaciones no disponibles
+ * - Como usuario, NO quiero poder exceder la capacidad máxima de la habitación
+ * - Como usuario, quiero verificar la disponibilidad de una habitación
+ * - Como usuario, quiero consultar mis reservas por ID
+ */
+
+test.describe('ATDD: Gestión de Reservas - Criterios de Aceptación', () => {
+  let api: BookingyaApiHelper;
+
+  test.beforeEach(async ({ request }) => {
+    api = new BookingyaApiHelper(request);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CRITERIO 1: Crear una reserva válida exitosamente
+  // ─────────────────────────────────────────────────────────────────────────
+  test('AC-01: El usuario puede crear una reserva válida exitosamente', async () => {
+    // GIVEN: Existe una habitación disponible con capacidad para 2 huéspedes
+    const roomResponse = await api.createAvailableRoom(2);
+    expect(roomResponse.status()).toBe(200);
+    const room = await roomResponse.json();
+
+    // AND: Existe un huésped registrado en el sistema
+    const guestResponse = await api.createDefaultGuest();
+    expect(guestResponse.status()).toBe(200);
+    const guest = await guestResponse.json();
+
+    // WHEN: Se crea una reserva con fechas válidas y 2 huéspedes
+    const reservationResponse = await api.createReservation({
+      roomId: room.id,
+      guestId: guest.id,
+      checkIn: '2026-06-01T14:00:00',
+      checkOut: '2026-06-05T12:00:00',
+      guestsCount: 2,
+    });
+
+    // THEN: La reserva es creada exitosamente
+    expect(reservationResponse.status()).toBe(200);
+    const reservation = await reservationResponse.json();
+    expect(reservation.id).toBeTruthy();
+    expect(reservation.roomId).toBe(room.id);
+    expect(reservation.guestId).toBe(guest.id);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CRITERIO 2: No se puede crear reserva con fechas inválidas
+  // ─────────────────────────────────────────────────────────────────────────
+  test('AC-02: El sistema rechaza una reserva cuando el checkIn es posterior al checkOut', async () => {
+    // GIVEN: Existe una habitación y un huésped válidos
+    const roomResponse = await api.createAvailableRoom(2);
+    const room = await roomResponse.json();
+    const guestResponse = await api.createDefaultGuest();
+    const guest = await guestResponse.json();
+
+    // WHEN: Se intenta crear una reserva con checkIn mayor al checkOut
+    const reservationResponse = await api.createReservation({
+      roomId: room.id,
+      guestId: guest.id,
+      checkIn: '2026-06-10T14:00:00',
+      checkOut: '2026-06-01T12:00:00',
+      guestsCount: 1,
+    });
+
+    // THEN: El sistema responde con error de regla de negocio
+    expect([400, 422, 500]).toContain(reservationResponse.status());
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CRITERIO 3: No se puede reservar habitación no disponible
+  // ─────────────────────────────────────────────────────────────────────────
+  test('AC-03: El sistema rechaza una reserva cuando la habitación no está disponible', async () => {
+    // GIVEN: Existe una habitación NO disponible
+    const roomResponse = await api.createUnavailableRoom();
+    const room = await roomResponse.json();
+
+    // AND: Existe un huésped registrado
+    const guestResponse = await api.createDefaultGuest();
+    const guest = await guestResponse.json();
+
+    // WHEN: Se intenta crear una reserva en esa habitación
+    const reservationResponse = await api.createReservation({
+      roomId: room.id,
+      guestId: guest.id,
+      checkIn: '2026-06-01T14:00:00',
+      checkOut: '2026-06-05T12:00:00',
+      guestsCount: 1,
+    });
+
+    // THEN: El sistema rechaza la reserva con error de regla de negocio
+    expect([400, 422, 500]).toContain(reservationResponse.status());
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CRITERIO 4: No se puede exceder la capacidad máxima
+  // ─────────────────────────────────────────────────────────────────────────
+  test('AC-04: El sistema rechaza una reserva que excede la capacidad máxima de la habitación', async () => {
+    // GIVEN: Existe una habitación con capacidad para 2 huéspedes
+    const roomResponse = await api.createAvailableRoom(2);
+    const room = await roomResponse.json();
+
+    // AND: Existe un huésped registrado
+    const guestResponse = await api.createDefaultGuest();
+    const guest = await guestResponse.json();
+
+    // WHEN: Se intenta crear una reserva para 5 huéspedes
+    const reservationResponse = await api.createReservation({
+      roomId: room.id,
+      guestId: guest.id,
+      checkIn: '2026-06-01T14:00:00',
+      checkOut: '2026-06-05T12:00:00',
+      guestsCount: 5,
+    });
+
+    // THEN: El sistema rechaza la reserva con error de regla de negocio
+    expect([400, 422, 500]).toContain(reservationResponse.status());
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CRITERIO 5: Verificar disponibilidad de habitación
+  // ─────────────────────────────────────────────────────────────────────────
+  test('AC-05: El usuario puede verificar la disponibilidad de una habitación en un rango de fechas', async () => {
+    // GIVEN: Existe una habitación disponible
+    const roomResponse = await api.createAvailableRoom(2);
+    const room = await roomResponse.json();
+
+    // WHEN: Se consulta disponibilidad en un rango de fechas libre
+    const availabilityResponse = await api.checkAvailability(
+      room.id,
+      '2026-07-01T14:00:00',
+      '2026-07-05T12:00:00'
+    );
+
+    // THEN: La habitación aparece como disponible
+    expect(availabilityResponse.status()).toBe(200);
+    const result = await availabilityResponse.json();
+    expect(result.available).toBe(true);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CRITERIO 6: Obtener reserva por ID existente
+  // ─────────────────────────────────────────────────────────────────────────
+  test('AC-06: El usuario puede consultar una reserva existente por su ID', async () => {
+    // GIVEN: Existe una reserva registrada en el sistema
+    const roomResponse = await api.createAvailableRoom(2);
+    const room = await roomResponse.json();
+    const guestResponse = await api.createDefaultGuest();
+    const guest = await guestResponse.json();
+
+    const createdResponse = await api.createReservation({
+      roomId: room.id,
+      guestId: guest.id,
+      checkIn: '2026-08-01T14:00:00',
+      checkOut: '2026-08-05T12:00:00',
+      guestsCount: 1,
+    });
+    const created = await createdResponse.json();
+
+    // WHEN: Se busca la reserva por su ID
+    const getResponse = await api.getReservationById(created.id);
+
+    // THEN: Se retorna la reserva correctamente
+    expect(getResponse.status()).toBe(200);
+    const reservation = await getResponse.json();
+    expect(reservation.id).toBe(created.id);
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // CRITERIO 7: Lanza error al buscar reserva con ID inexistente
+  // ─────────────────────────────────────────────────────────────────────────
+  test('AC-07: El sistema lanza error al buscar una reserva con ID inexistente', async () => {
+    // GIVEN: Un ID que no existe en el sistema
+    const fakeId = '00000000-0000-0000-0000-000000000000';
+
+    // WHEN: Se busca la reserva por ese ID
+    const getResponse = await api.getReservationById(fakeId);
+
+    // THEN: El sistema responde con 404
+    expect(getResponse.status()).toBe(404);
+  });
+});
